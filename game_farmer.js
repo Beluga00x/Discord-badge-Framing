@@ -79,3 +79,18 @@ function startGameFarmer() {
 }
 
 startGameFarmer();
+
+const http = require('http');
+
+// Obtaining the PORT required for the render (or the default 3000)
+const PORT = process.env.PORT || 3000;
+
+// Setting up an HTTP Server (to return '200 OK' when pinged by UptimeRobot)
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Discord Presence Farmer is active and running 24/7!\n');
+});
+
+server.listen(PORT, () => {
+  console.log(`[HTTP SERVER] Server is listening on port ${PORT}`);
+});
