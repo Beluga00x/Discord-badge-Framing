@@ -1,0 +1,12 @@
+{
+  "name": "discord-farmer",
+  "version": "1.0.0",
+  "description": "Discord Presence Farmer",
+  "main": "game_farmer.js",
+  "scripts": {
+    "start": "node game_farmer.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
