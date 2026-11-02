@@ -1,7 +1,7 @@
 // file: game_farmer.js | runtime: Node.js v18+ | dependency: ws (npm i ws)
 const WebSocket = require('ws');
 
-// මෙතනට ඔයාගේ Discord Token එක දාන්න
+// Enter your Discord Token there.
 const TOKEN = process.env.DISCORD_TOKEN;
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
@@ -19,7 +19,7 @@ function startGameFarmer() {
     const startTime = Date.now();
 
     ws.on('open', () => {
-        console.log("[GAME FARMER] Discord Gateway එකට සම්බන්ධ වුණා.");
+        console.log("[GAME FARMER] Discord Gateway is CONNECTED.");
     });
 
     ws.on('message', (data) => {
@@ -63,12 +63,12 @@ function startGameFarmer() {
         }
 
         if (t === "READY") {
-            console.log(`[GAME FARMER] ${d.user.username} විදිහට ලොග් වුණා. දැන් ${VERIFIED_GAME.name} පැය ගාණ Farm වෙනවා!`);
+            console.log(`[GAME FARMER] ${d.user.username} Loging Success. Now ${VERIFIED_GAME.name} Farming for hours!`);
         }
     });
 
     ws.on('close', (code) => {
-        console.log(`[GAME FARMER] විසන්ධි වුණා (${code}). තත්පර 5කින් නැවත සම්බන්ධ වෙනවා...`);
+        console.log(`[GAME FARMER] DISCONNECTED (${code}). Reconnecting in 5 seconds...`);
         clearInterval(heartbeatInterval);
         setTimeout(startGameFarmer, 5000);
     });
