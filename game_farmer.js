@@ -2,7 +2,7 @@
 const WebSocket = require('ws');
 
 // මෙතනට ඔයාගේ Discord Token එක දාන්න
-const TOKEN = "MTA1MzE3ODEyNjg2NTI3Njk1OQ.G5F9QN.jRAvpL87sXC_1WMJqN7J0k7RFexB5j_xIKpClc"; 
+const TOKEN = process.env.DISCORD_TOKEN;
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
