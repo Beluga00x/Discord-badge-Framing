@@ -22,8 +22,9 @@ if (!TOKEN) {
   process.exit(1);
 }
 
+// 🟢 Change only this game name, and it will auto-detect its official App ID and logo!
 const GAME_NAME = "Brawlhalla";
-let GAME_APP_ID = null;
+let GAME_APP_ID = "356875221078245376"; // Default fallback ID
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -35,38 +36,37 @@ let isSyncingBreak = false;
 
 async function fetchOfficialGameAppId(gameName) {
   try {
+    console.log(`[GAME FARMER] Fetching official App ID for: ${gameName}...`);
     const response = await fetch("https://discord.com/api/v10/applications/detectable");
+    if (!response.ok) throw new Error("API request failed");
     const games = await response.json();
     const match = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
     if (match) {
-      console.log(`[GAME FARMER] Found official App ID for ${match.name}: ${match.id}`);
+      console.log(`[GAME FARMER] Auto-detected official App ID for ${match.name}: ${match.id}`);
       return match.id;
     }
   } catch (err) {
-    console.error("[GAME FARMER] Error fetching App ID:", err.message);
+    console.error("[GAME FARMER] Error auto-detecting App ID, using fallback:", err.message);
   }
-  return null;
+  return GAME_APP_ID;
 }
 
 function getPresencePayload(clearActivity = false) {
-  const activity = {
-    name: GAME_NAME,
-    type: 0,
-    timestamps: {
-      start: sessionStartTime
-    },
-    flags: 1
-  };
-
-  if (GAME_APP_ID) {
-    activity.application_id = GAME_APP_ID;
-  }
-
   return {
     op: 3,
     d: {
       since: clearActivity ? null : sessionStartTime,
-      activities: clearActivity ? [] : [activity],
+      activities: clearActivity ? [] : [
+        {
+          name: GAME_NAME,
+          type: 0,
+          application_id: GAME_APP_ID,
+          timestamps: {
+            start: sessionStartTime
+          },
+          flags: 1
+        }
+      ],
       status: "online",
       afk: false
     }
@@ -144,7 +144,7 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Now farming hours for ${GAME_NAME}!`);
+      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Farming hours for ${GAME_NAME} with auto-detected logo!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
@@ -184,6 +184,9 @@ setInterval(() => {
 }, 2 * 60 * 60 * 1000);
 
 (async () => {
-  GAME_APP_ID = await fetchOfficialGameAppId(GAME_NAME);
+  const detectedId = await fetchOfficialGameAppId(GAME_NAME);
+  if (detectedId) {
+    GAME_APP_ID = detectedId;
+  }
   startGameFarmer();
 })();
