@@ -22,9 +22,9 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// 🟢 Change only this game name, and it will auto-detect its official App ID and logo!
+// Hardcoded official Brawlhalla Application ID to permanently fix the Overwatch logo mixup
 const GAME_NAME = "Brawlhalla";
-let GAME_APP_ID = "356875221078245376"; // Default fallback ID
+const GAME_APP_ID = "356875221078245376"; 
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -33,23 +33,6 @@ let heartbeatInterval;
 let lastSequence = null;
 let sessionStartTime = Date.now();
 let isSyncingBreak = false;
-
-async function fetchOfficialGameAppId(gameName) {
-  try {
-    console.log(`[GAME FARMER] Fetching official App ID for: ${gameName}...`);
-    const response = await fetch("https://discord.com/api/v10/applications/detectable");
-    if (!response.ok) throw new Error("API request failed");
-    const games = await response.json();
-    const match = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
-    if (match) {
-      console.log(`[GAME FARMER] Auto-detected official App ID for ${match.name}: ${match.id}`);
-      return match.id;
-    }
-  } catch (err) {
-    console.error("[GAME FARMER] Error auto-detecting App ID, using fallback:", err.message);
-  }
-  return GAME_APP_ID;
-}
 
 function getPresencePayload(clearActivity = false) {
   return {
@@ -144,7 +127,7 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Farming hours for ${GAME_NAME} with auto-detected logo!`);
+      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Farming hours for ${GAME_NAME} with correct official Brawlhalla logo!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
@@ -183,10 +166,4 @@ setInterval(() => {
   }
 }, 2 * 60 * 60 * 1000);
 
-(async () => {
-  const detectedId = await fetchOfficialGameAppId(GAME_NAME);
-  if (detectedId) {
-    GAME_APP_ID = detectedId;
-  }
-  startGameFarmer();
-})();
+startGameFarmer();
