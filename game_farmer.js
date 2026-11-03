@@ -23,7 +23,7 @@ if (!TOKEN) {
 }
 
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356875221078245376"; // Verified Detectable App ID
+const GAME_APP_ID = "356875221078245376"; 
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -45,10 +45,6 @@ function getPresencePayload(clearActivity = false) {
           application_id: GAME_APP_ID,
           timestamps: {
             start: sessionStartTime
-          },
-          assets: {
-            large_image: "356875221078245376", // Using app id as asset key to prevent missing image bug
-            large_text: "Brawlhalla"
           },
           flags: 1
         }
@@ -130,7 +126,7 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Logo asset fixed!`);
+      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Clean presence active!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
