@@ -22,7 +22,7 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const GAME_NAME = "Arknights: Endfield";
+const GAME_NAME = "Brawlhalla";
 let GAME_APP_ID = null;
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
