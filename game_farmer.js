@@ -1,28 +1,30 @@
 // File: game_farmer.js
-// Runtime: Node.js 18+ (requires 'ws' package)
+// Runtime: Node.js 18+ ('ws' package garjecha aahe)
 
 const WebSocket = require('ws');
 const http = require('http');
 
+// 1. Render HTTP Server (0.0.0.0 var port chalu thevnyasathi)
 const PORT = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Brawlhalla Presence Farmer is active and running 24/7!\n');
+  res.end('Brawlhalla farmer 24/7 chalu aahe!\n');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[HTTP SERVER] Server is listening on port ${PORT}`);
+  console.log(`[HTTP SERVER] Port ${PORT} var server chalu aahe`);
 });
 
+// 2. Render Environment Variables madhun Token ghene
 const RAW_TOKEN = process.env.DISCORD_TOKEN || process.env.TOKEN || "";
 const TOKEN = RAW_TOKEN.trim().replace(/^["']|["']$/g, '');
 
 if (!TOKEN) {
-  console.error("[ERROR] DISCORD_TOKEN or TOKEN not found in Render Environment Variables!");
+  console.error("[ERROR] Render Environment Variables madhe DISCORD_TOKEN kinva TOKEN sapadla nahi!");
   process.exit(1);
 }
 
-// Brawlhalla official App ID
+// 3. Brawlhalla cha achuk Application ID
 const GAME_NAME = "Brawlhalla";
 const GAME_APP_ID = "356944273133928458"; 
 
@@ -60,7 +62,7 @@ function startGameFarmer() {
   ws = new WebSocket(GATEWAY_URL);
 
   ws.on('open', () => {
-    console.log("[BRAWLHALLA] Connected to Discord Gateway.");
+    console.log("[BRAWLHALLA] Discord Gateway shi jodle gele aahe.");
   });
 
   ws.on('message', (data) => {
@@ -127,33 +129,33 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[BRAWLHALLA] Logged in as ${d.user.username}. Playtime farming active!`);
+      console.log(`[BRAWLHALLA] ${d.user.username} mhanun login jhale. ${GAME_NAME} che taas mojane suru aahe!`);
       ws.send(JSON.stringify(getPresencePayload(false)));
     }
   });
 
   ws.on('close', (code) => {
-    console.log(`[BRAWLHALLA] Connection closed (${code}). Reconnecting in 5s...`);
+    console.log(`[BRAWLHALLA] Connection band jhale (${code}). 5 sekandat punha jodat aahe...`);
     clearInterval(heartbeatInterval);
     setTimeout(startGameFarmer, 5000);
   });
 
   ws.on('error', (err) => {
-    console.error("[BRAWLHALLA] Socket Error:", err.message);
+    console.error("[BRAWLHALLA] Error:", err.message);
   });
 }
 
-// Har 15 minute me presence refresh
+// Dar 15 minitanni presence refresh karne
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN && !isResetting) {
     ws.send(JSON.stringify(getPresencePayload(false)));
   }
 }, 15 * 60 * 1000);
 
-// Har 45 minute me session end aur restart (taaki Discord server par playtime save ho sake)
+// Dar 45 minitanni session save karnyasathi 15 sekandacha break gheun punha suru karne
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("[BRAWLHALLA] Flushing game session to force Discord backend sync...");
+    console.log("[BRAWLHALLA] Badge var taas save karnyasathi session refresh karat aahe...");
     isResetting = true;
     ws.send(JSON.stringify(getPresencePayload(true)));
 
@@ -162,7 +164,7 @@ setInterval(() => {
       isResetting = false;
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(getPresencePayload(false)));
-        console.log("[BRAWLHALLA] New session started. Playtime recorded on server!");
+        console.log("[BRAWLHALLA] Navin session suru jhale. Playtime server var save jhala aahe!");
       }
     }, 15 * 1000);
   }
