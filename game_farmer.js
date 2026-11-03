@@ -23,7 +23,7 @@ if (!TOKEN) {
 }
 
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "118778495085182976"; 
+const GAME_APP_ID = "356944273133928458"; 
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
