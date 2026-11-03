@@ -7,7 +7,7 @@ const http = require('http');
 const PORT = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Discord Presence Farmer is active and running 24/7!\n');
+  res.end('Brawlhalla Presence Farmer is active and running 24/7!\n');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -22,9 +22,9 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// Hardcoded official Brawlhalla Application ID to permanently fix the Overwatch logo mixup
+// Strict Brawlhalla configuration with official verified Application ID
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356875221078245376"; 
+const GAME_APP_ID = "290928920155250688"; // Official Brawlhalla Discord App ID
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -60,7 +60,7 @@ function startGameFarmer() {
   ws = new WebSocket(GATEWAY_URL);
 
   ws.on('open', () => {
-    console.log("[GAME FARMER] Connected to Discord Gateway.");
+    console.log("[BRAWLHALLA FARMER] Connected to Discord Gateway.");
   });
 
   ws.on('message', (data) => {
@@ -127,19 +127,19 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Farming hours for ${GAME_NAME} with correct official Brawlhalla logo!`);
+      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Farming Brawlhalla hours with official assets!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
 
   ws.on('close', (code) => {
-    console.log(`[GAME FARMER] Connection closed (${code}). Reconnecting in 5s...`);
+    console.log(`[BRAWLHALLA FARMER] Connection closed (${code}). Reconnecting in 5s...`);
     clearInterval(heartbeatInterval);
     setTimeout(startGameFarmer, 5000);
   });
 
   ws.on('error', (err) => {
-    console.error("[GAME FARMER] Error:", err.message);
+    console.error("[BRAWLHALLA FARMER] Error:", err.message);
   });
 }
 
@@ -151,7 +151,7 @@ setInterval(() => {
 
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("[GAME FARMER] Refreshing session to sync playtime to badge...");
+    console.log("[BRAWLHALLA FARMER] Refreshing session to sync playtime to badge...");
     isSyncingBreak = true;
     ws.send(JSON.stringify(getPresencePayload(true)));
 
@@ -160,7 +160,7 @@ setInterval(() => {
       isSyncingBreak = false;
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(getPresencePayload(false)));
-        console.log("[GAME FARMER] Session successfully synced!");
+        console.log("[BRAWLHALLA FARMER] Session successfully synced!");
       }
     }, 20 * 1000);
   }
