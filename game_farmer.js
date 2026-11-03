@@ -4,7 +4,6 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-// 1. Render HTTP Server (For Render Port Scanner and UptimeRobot via 0.0.0.0)
 const PORT = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -15,18 +14,16 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`[HTTP SERVER] Server is listening on port ${PORT}`);
 });
 
-// 2. Retrieving the token from Render environment variables
 const RAW_TOKEN = process.env.DISCORD_TOKEN || process.env.TOKEN || "";
 const TOKEN = RAW_TOKEN.trim().replace(/^["']|["']$/g, '');
 
 if (!TOKEN) {
-  console.error("[ERROR] Render Environment Variables වල DISCORD_TOKEN හෝ TOKEN හමු වුණේ නැහැ!");
+  console.error("[ERROR] DISCORD_TOKEN or TOKEN not found in Render Environment Variables!");
   process.exit(1);
 }
 
-// 3. Detectable PC Game Details (Brawlhalla Official Discord Application ID)
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356875221078245376";
+let GAME_APP_ID = null;
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -36,24 +33,40 @@ let lastSequence = null;
 let sessionStartTime = Date.now();
 let isSyncingBreak = false;
 
+async function fetchOfficialGameAppId(gameName) {
+  try {
+    const response = await fetch("https://discord.com/api/v10/applications/detectable");
+    const games = await response.json();
+    const match = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
+    if (match) {
+      console.log(`[GAME FARMER] Found official App ID for ${match.name}: ${match.id}`);
+      return match.id;
+    }
+  } catch (err) {
+    console.error("[GAME FARMER] Error fetching App ID:", err.message);
+  }
+  return null;
+}
+
 function getPresencePayload(clearActivity = false) {
+  const activity = {
+    name: GAME_NAME,
+    type: 0,
+    timestamps: {
+      start: sessionStartTime
+    },
+    flags: 1
+  };
+
+  if (GAME_APP_ID) {
+    activity.application_id = GAME_APP_ID;
+  }
+
   return {
     op: 3,
     d: {
       since: clearActivity ? null : sessionStartTime,
-      activities: clearActivity
-        ? []
-        : [
-            {
-              name: GAME_NAME,
-              type: 0,
-              application_id: GAME_APP_ID,
-              timestamps: {
-                start: sessionStartTime
-              },
-              flags: 1
-            }
-          ],
+      activities: clearActivity ? [] : [activity],
       status: "online",
       afk: false
     }
@@ -64,7 +77,7 @@ function startGameFarmer() {
   ws = new WebSocket(GATEWAY_URL);
 
   ws.on('open', () => {
-    console.log("[GAME FARMER] Discord Gateway වෙත සම්බන්ධ වුණා.");
+    console.log("[GAME FARMER] Connected to Discord Gateway.");
   });
 
   ws.on('message', (data) => {
@@ -80,7 +93,6 @@ function startGameFarmer() {
       lastSequence = s;
     }
 
-    // OP 10: Hello - Initiating Heartbeat and Sending 'Identify' as a Windows Desktop Client
     if (op === 10) {
       const interval = d.heartbeat_interval;
       clearInterval(heartbeatInterval);
@@ -127,21 +139,12 @@ function startGameFarmer() {
       ws.send(JSON.stringify(identifyPayload));
     }
 
-    // OP 7: Reconnecting if a 'Reconnect' request is received
-    if (op === 7) {
-      console.log("[GAME FARMER] Discord වෙතින් Reconnect ඉල්ලීමක් ලැබුණා.");
+    if (op === 7 || op === 9) {
       ws.close();
     }
 
-    // OP 9: Invalid Session
-    if (op === 9) {
-      console.log("[GAME FARMER] Invalid Session. තත්පර 5කින් නැවත සම්බන්ධ වෙනවා...");
-      ws.close();
-    }
-
-    // READY Event
     if (t === "READY") {
-      console.log(`[GAME FARMER] ${d.user.username} විදිහට ලොග් වුණා. දැන් ${GAME_NAME} පැය ගාණ Farm වෙනවා!`);
+      console.log(`[GAME FARMER] Logged in as ${d.user.username}. Now farming hours for ${GAME_NAME}!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
@@ -157,29 +160,30 @@ function startGameFarmer() {
   });
 }
 
-// Refreshing the Presence every 15 minutes
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN && !isSyncingBreak) {
     ws.send(JSON.stringify(getPresencePayload(false)));
   }
 }, 15 * 60 * 1000);
 
-// To sync 'Playtime' with the Discord backend, the system pauses for 20 seconds every 2 hours before resuming.
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("[GAME FARMER] Playtime පැය ගාණ බැජ් එකට Sync කිරීම සඳහා Session එක Refresh කරමින්...");
+    console.log("[GAME FARMER] Refreshing session to sync playtime to badge...");
     isSyncingBreak = true;
-    ws.send(JSON.stringify(getPresencePayload(true))); // The game is being temporarily paused.
+    ws.send(JSON.stringify(getPresencePayload(true)));
 
     setTimeout(() => {
       sessionStartTime = Date.now();
       isSyncingBreak = false;
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(getPresencePayload(false))); // Restarts the game
-        console.log("[GAME FARMER] Session It was successfully synced. Playtime is calculated again!");
+        ws.send(JSON.stringify(getPresencePayload(false)));
+        console.log("[GAME FARMER] Session successfully synced!");
       }
     }, 20 * 1000);
   }
 }, 2 * 60 * 60 * 1000);
 
-startGameFarmer();
+(async () => {
+  GAME_APP_ID = await fetchOfficialGameAppId(GAME_NAME);
+  startGameFarmer();
+})();
