@@ -22,9 +22,8 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// Strict Brawlhalla configuration with official verified Application ID
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "290928920155250688"; // Official Brawlhalla Discord App ID
+const GAME_APP_ID = "290928920155250688"; // Official Brawlhalla App ID
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -46,6 +45,10 @@ function getPresencePayload(clearActivity = false) {
           application_id: GAME_APP_ID,
           timestamps: {
             start: sessionStartTime
+          },
+          assets: {
+            large_image: "brawlhalla", // forces Discord to pull the registered asset
+            large_text: "Brawlhalla"
           },
           flags: 1
         }
@@ -127,7 +130,7 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Farming Brawlhalla hours with official assets!`);
+      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Assets patched!`);
       ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
     }
   });
