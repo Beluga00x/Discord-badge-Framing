@@ -24,7 +24,7 @@ if (!TOKEN) {
 
 // Brawlhalla official App ID
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356875221078245376"; 
+const GAME_APP_ID = "356944273133928458"; 
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
