@@ -22,8 +22,9 @@ if (!TOKEN) {
   process.exit(1);
 }
 
+// Brawlhalla official App ID
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356944273133928458"; 
+const GAME_APP_ID = "356875221078245376"; 
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -31,14 +32,14 @@ let ws;
 let heartbeatInterval;
 let lastSequence = null;
 let sessionStartTime = Date.now();
-let isSyncingBreak = false;
+let isResetting = false;
 
-function getPresencePayload(clearActivity = false) {
+function getPresencePayload(clear = false) {
   return {
     op: 3,
     d: {
-      since: clearActivity ? null : sessionStartTime,
-      activities: clearActivity ? [] : [
+      since: clear ? null : sessionStartTime,
+      activities: clear ? [] : [
         {
           name: GAME_NAME,
           type: 0,
@@ -59,7 +60,7 @@ function startGameFarmer() {
   ws = new WebSocket(GATEWAY_URL);
 
   ws.on('open', () => {
-    console.log("[BRAWLHALLA FARMER] Connected to Discord Gateway.");
+    console.log("[BRAWLHALLA] Connected to Discord Gateway.");
   });
 
   ws.on('message', (data) => {
@@ -104,7 +105,7 @@ function startGameFarmer() {
             $browser: "Discord Client",
             $device: "desktop"
           },
-          presence: getPresencePayload(isSyncingBreak).d,
+          presence: getPresencePayload(isResetting).d,
           compress: false,
           client_state: {
             guild_versions: {},
@@ -126,43 +127,45 @@ function startGameFarmer() {
     }
 
     if (t === "READY") {
-      console.log(`[BRAWLHALLA FARMER] Logged in as ${d.user.username}. Clean presence active!`);
-      ws.send(JSON.stringify(getPresencePayload(isSyncingBreak)));
+      console.log(`[BRAWLHALLA] Logged in as ${d.user.username}. Playtime farming active!`);
+      ws.send(JSON.stringify(getPresencePayload(false)));
     }
   });
 
   ws.on('close', (code) => {
-    console.log(`[BRAWLHALLA FARMER] Connection closed (${code}). Reconnecting in 5s...`);
+    console.log(`[BRAWLHALLA] Connection closed (${code}). Reconnecting in 5s...`);
     clearInterval(heartbeatInterval);
     setTimeout(startGameFarmer, 5000);
   });
 
   ws.on('error', (err) => {
-    console.error("[BRAWLHALLA FARMER] Error:", err.message);
+    console.error("[BRAWLHALLA] Socket Error:", err.message);
   });
 }
 
+// Har 15 minute me presence refresh
 setInterval(() => {
-  if (ws && ws.readyState === WebSocket.OPEN && !isSyncingBreak) {
+  if (ws && ws.readyState === WebSocket.OPEN && !isResetting) {
     ws.send(JSON.stringify(getPresencePayload(false)));
   }
 }, 15 * 60 * 1000);
 
+// Har 45 minute me session end aur restart (taaki Discord server par playtime save ho sake)
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("[BRAWLHALLA FARMER] Refreshing session to sync playtime to badge...");
-    isSyncingBreak = true;
+    console.log("[BRAWLHALLA] Flushing game session to force Discord backend sync...");
+    isResetting = true;
     ws.send(JSON.stringify(getPresencePayload(true)));
 
     setTimeout(() => {
       sessionStartTime = Date.now();
-      isSyncingBreak = false;
+      isResetting = false;
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(getPresencePayload(false)));
-        console.log("[BRAWLHALLA FARMER] Session successfully synced!");
+        console.log("[BRAWLHALLA] New session started. Playtime recorded on server!");
       }
-    }, 20 * 1000);
+    }, 15 * 1000);
   }
-}, 2 * 60 * 60 * 1000);
+}, 45 * 60 * 1000);
 
 startGameFarmer();
