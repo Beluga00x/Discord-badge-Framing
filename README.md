@@ -21,7 +21,7 @@
 
 ## ✨ Key Features
 
-* **Verified Game Icon Support:** Configured with the official *Brawlhalla* Application ID (`356944273133928458`) to prevent the missing question-mark (`?`) icon or the wrong Overwatch icon with the "Get on Steam" button.
+* **Verified Game Icon Support:** Configured with the official *Brawlhalla* Application ID (`356944273133928458`) to prevent the missing question-mark (`?`) icon or the wrong Brawlhalla icon with the "Get on Steam" button.
 * **Automatic Backend Playtime Sync:** Uses a 45-minute session flush cycle (with a 15-second cooldown) so Discord's backend properly saves session hours toward your badge progress (such as advancing from 1,812 hours through the remaining 188 hours).
 * **24/7 Cloud Hosting Ready:** Includes a built-in HTTP web server (`0.0.0.0`) for **Render** port binding and **UptimeRobot** keep-alive pings.
 * **Gateway Heartbeat & Auto-Reconnect:** Automatically responds to `op: 10` heartbeat intervals and reconnects within 5 seconds if the connection drops.
