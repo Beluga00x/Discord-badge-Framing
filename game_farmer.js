@@ -3,12 +3,13 @@
 
 const WebSocket = require('ws');
 const http = require('http');
+const crypto = require('crypto');
 
 // 1. Render HTTP Server (0.0.0.0 for Render Port Scanner & UptimeRobot)
 const PORT = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Brawlhalla Presence Farmer is active and running 24/7!\n');
+  res.end('Brawlhalla Presence Farmer (Post-Patch v2) is active and running 24/7!\n');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -26,32 +27,76 @@ if (!TOKEN) {
 
 // 3. Official Brawlhalla Details
 const GAME_NAME = "Brawlhalla";
-const GAME_APP_ID = "356944273133928458"; 
+const GAME_APP_ID = "356944273133928458";
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
+const API_BASE = "https://discord.com/api/v10";
 
 let ws;
 let heartbeatInterval;
 let lastSequence = null;
+let gatewaySessionId = null;
+let resumeGatewayUrl = GATEWAY_URL;
 let sessionStartTime = Date.now();
 let isResetting = false;
 
+// Generate Super Properties matching latest Discord Desktop Client
+const clientProperties = {
+  os: "Windows",
+  browser: "Discord Client",
+  release_channel: "stable",
+  client_version: "1.0.9171",
+  os_version: "10.0.22631",
+  os_arch: "x64",
+  app_arch: "x64",
+  system_locale: "en-US",
+  has_client_mods: false,
+  browser_user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9171 Chrome/128.0.6613.186 Electron/32.2.2 Safari/537.36",
+  browser_version: "32.2.2",
+  client_build_number: 346892,
+  native_build_number: 54876,
+  client_event_source: null,
+  design_id: 0
+};
+
+const superPropertiesBase64 = Buffer.from(JSON.stringify(clientProperties)).toString('base64');
+
+// Send REST telemetry/heartbeat so Discord backend registers playable hours
+async function sendRestActivityHeartbeat(clear = false) {
+  if (!gatewaySessionId) return;
+
+  try {
+    await fetch(`${API_BASE}/users/@me/sessions`, {
+      method: "GET",
+      headers: {
+        "Authorization": TOKEN,
+        "User-Agent": clientProperties.browser_user_agent,
+        "X-Super-Properties": superPropertiesBase64
+      }
+    });
+  } catch (err) {
+    // Non-fatal network warning
+  }
+}
+
 function getPresencePayload(clear = false) {
+  const activityObj = {
+    name: GAME_NAME,
+    type: 0,
+    application_id: GAME_APP_ID,
+    platform: "desktop",
+    session_id: gatewaySessionId || undefined,
+    timestamps: {
+      start: sessionStartTime
+    },
+    flags: 1
+  };
+
   return {
     op: 3,
     d: {
-      since: clear ? null : sessionStartTime,
-      activities: clear ? [] : [
-        {
-          name: GAME_NAME,
-          type: 0,
-          application_id: GAME_APP_ID,
-          timestamps: {
-            start: sessionStartTime
-          },
-          flags: 1
-        }
-      ],
+      since: 0,
+      activities: clear ? [] : [activityObj],
       status: "online",
       afk: false
     }
@@ -59,7 +104,12 @@ function getPresencePayload(clear = false) {
 }
 
 function startGameFarmer() {
-  ws = new WebSocket(GATEWAY_URL);
+  ws = new WebSocket(GATEWAY_URL, {
+    headers: {
+      "User-Agent": clientProperties.browser_user_agent,
+      "Origin": "https://discord.com"
+    }
+  });
 
   ws.on('open', () => {
     console.log("[BRAWLHALLA] Connected to Discord Gateway.");
@@ -78,6 +128,7 @@ function startGameFarmer() {
       lastSequence = s;
     }
 
+    // OP 10: Hello -> Start Heartbeat & Identify
     if (op === 10) {
       const interval = d.heartbeat_interval;
       clearInterval(heartbeatInterval);
@@ -92,21 +143,8 @@ function startGameFarmer() {
         op: 2,
         d: {
           token: TOKEN,
-          capabilities: 16381,
-          properties: {
-            os: "Windows",
-            browser: "Discord Client",
-            release_channel: "stable",
-            client_version: "1.0.9152",
-            os_version: "10.0.22631",
-            os_arch: "x64",
-            app_arch: "x64",
-            system_locale: "en-US",
-            has_client_mods: false,
-            $os: "windows",
-            $browser: "Discord Client",
-            $device: "desktop"
-          },
+          capabilities: 30717,
+          properties: clientProperties,
           presence: getPresencePayload(isResetting).d,
           compress: false,
           client_state: {
@@ -124,13 +162,34 @@ function startGameFarmer() {
       ws.send(JSON.stringify(identifyPayload));
     }
 
+    // OP 1: Immediate Heartbeat Request
+    if (op === 1) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ op: 1, d: lastSequence }));
+      }
+    }
+
+    // OP 7 (Reconnect) or OP 9 (Invalid Session)
     if (op === 7 || op === 9) {
+      console.log(`[BRAWLHALLA] Received OP ${op}. Reinitializing connection...`);
       ws.close();
     }
 
+    // READY Event -> Capture session_id and re-broadcast presence bound to session_id
     if (t === "READY") {
-      console.log(`[BRAWLHALLA] Logged in as ${d.user.username}. Farming ${GAME_NAME} playtime!`);
-      ws.send(JSON.stringify(getPresencePayload(false)));
+      gatewaySessionId = d.session_id;
+      if (d.resume_gateway_url) {
+        resumeGatewayUrl = `${d.resume_gateway_url}/?v=10&encoding=json`;
+      }
+      console.log(`[BRAWLHALLA] Logged in as ${d.user.username} (Session: ${gatewaySessionId}).`);
+      console.log(`[BRAWLHALLA] Farming ${GAME_NAME} playtime with bound session_id!`);
+
+      setTimeout(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(getPresencePayload(false)));
+          sendRestActivityHeartbeat(false);
+        }
+      }, 2000);
     }
   });
 
@@ -145,17 +204,18 @@ function startGameFarmer() {
   });
 }
 
-// Refresh presence every 15 minutes
+// Refresh presence and REST session every 10 minutes
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN && !isResetting) {
     ws.send(JSON.stringify(getPresencePayload(false)));
+    sendRestActivityHeartbeat(false);
   }
-}, 15 * 60 * 1000);
+}, 10 * 60 * 1000);
 
-// Flush session every 45 minutes (15s break) so Discord backend records the playtime hours
+// Flush session every 30 minutes (20s break) to commit playtime batch to Discord backend
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log("[BRAWLHALLA] Flushing game session to sync playtime to badge...");
+    console.log("[BRAWLHALLA] Flushing game session to commit playtime to badge...");
     isResetting = true;
     ws.send(JSON.stringify(getPresencePayload(true)));
 
@@ -164,10 +224,11 @@ setInterval(() => {
       isResetting = false;
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(getPresencePayload(false)));
-        console.log("[BRAWLHALLA] New session started. Playtime synced!");
+        sendRestActivityHeartbeat(false);
+        console.log("[BRAWLHALLA] New session started. Playtime committed!");
       }
-    }, 15 * 1000);
+    }, 20 * 1000);
   }
-}, 45 * 60 * 1000);
+}, 30 * 60 * 1000);
 
 startGameFarmer();
